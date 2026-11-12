@@ -14,6 +14,11 @@
 #include "imgui.h"
 #include "imgui_internal.h"   // ImGuiComboFlags_CustomPreview
 
+// Local build shim (not upstream): imgui 1.93.0 removed the flag (BeginComboPreview needs none now).
+#if IMGUI_VERSION_NUM >= 19300
+constexpr ImGuiComboFlags ImGuiComboFlags_CustomPreview = 0;
+#endif
+
 #include <cctype>
 
 using namespace LoadGameUi;

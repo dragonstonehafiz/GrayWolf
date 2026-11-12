@@ -11,6 +11,15 @@
 #include "dxc/Support/dxcapi.use.h"
 #include "dxc/DxilContainer/DxilContainer.h"
 
+// Local build shim (not upstream): Windows SDK 10.0.22000 predates these enum values (d3dcommon.h /
+// d3d12shader.h of SDK 10.0.22621 define them with the same numbers).
+#if !defined(NTDDI_WIN10_NI)
+constexpr auto D3D_REGISTER_COMPONENT_UINT16 = (D3D_REGISTER_COMPONENT_TYPE)4;
+constexpr auto D3D_REGISTER_COMPONENT_SINT16 = (D3D_REGISTER_COMPONENT_TYPE)5;
+constexpr auto D3D_REGISTER_COMPONENT_FLOAT16 = (D3D_REGISTER_COMPONENT_TYPE)6;
+constexpr auto D3D12_SHVER_LIBRARY = (D3D12_SHADER_VERSION_TYPE)6;
+#endif
+
 #include <algorithm>
 #include <cstring>
 #include <filesystem>
