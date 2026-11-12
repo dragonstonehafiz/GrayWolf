@@ -77,7 +77,10 @@ namespace
     };
     static_assert(sizeof(Surface) == 0xe0, "XSurface is 0xe0");
     #pragma pack(pop)
-    // A rigid run (16 bytes, the table's u8 0xe * 16; the campaign's 12): its bone u16 0, its vertex count u16 2
+    // A rigid run (16 bytes, the table's u8 0xe * 16; the campaign's 12): its bone u16 0, its vertex count u16 6
+    // (multiplayer: c_t10_zmb_viper_mini_body's 13 rigid surfaces, each run's count at 6 summing to the
+    // surface's vertices and its bone matching Black Ops 7's export of the same model; u16 2 is 0, which
+    // left every rigid vertex on bone 0). The campaign's 12-byte runs keep u16 2 (not checked).
 
     // a served pointer: a reference the zone does not hold keeps its raw hash (bit 63 set)
     bool Valid(uint64_t Address)
@@ -158,9 +161,9 @@ void GameBlackOps6::PerformInitialSetup()
     IwctxReaders::LoadNameIndexes();
 }
 
-const GameBlackOps6::Layout GameBlackOps6::Multiplayer{ ModelSkeleton, ModelMaterials, ModelLods, SoundFlags, SoundRate, 16, 32, SABSupport::OpusPreSkipLookAhead,
+const GameBlackOps6::Layout GameBlackOps6::Multiplayer{ ModelSkeleton, ModelMaterials, ModelLods, SoundFlags, SoundRate, 16, 32, 6, SABSupport::OpusPreSkipLookAhead,
                                                         ImageFormats, (uint32_t)std::size(ImageFormats) };
-const GameBlackOps6::Layout GameBlackOps6::Campaign{ 0x70, 0x98, 0xa0, 0x3c, 0x2c, 12, 28, SABSupport::OpusPreSkipPacket,
+const GameBlackOps6::Layout GameBlackOps6::Campaign{ 0x70, 0x98, 0xa0, 0x3c, 0x2c, 12, 28, 2, SABSupport::OpusPreSkipPacket,
                                                      CampaignImageFormats, (uint32_t)std::size(CampaignImageFormats) };
 thread_local const GameBlackOps6::Layout* GameBlackOps6::Current = &GameBlackOps6::Multiplayer;
 
@@ -269,7 +272,7 @@ void GameBlackOps6::LoadXModel(const std::unique_ptr<XModel_t>& Model, const XMo
     // buffer's end reads 0); the layout's rigid runs
     const MeshDecode::LodFormat Format{ { MeshDecode::PositionCodec::Packed21, MeshDecode::NormalCodec::QTangent, MeshDecode::UvCodec::Half2,
                                           MeshDecode::FaceCodec::PackedTableDelta, Current->FaceTableSize, MeshDecode::Edge::Zero },
-                                        { Current->RigidRunSize, 2 } };
+                                        { Current->RigidRunSize, Current->RigidCountAt } };
     MeshDecode::DecodeLod(Mesh.View(), ModelLOD, Format, SettingsManager::GetSetting("exportvtxcolor", "true") == "true", *ResultModel);
 }
 

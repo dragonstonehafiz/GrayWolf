@@ -62,6 +62,7 @@ public:
     {
         int64_t ModelSkeleton, ModelMaterials, ModelLods, SoundFlags, SoundRate;
         uint32_t RigidRunSize, FaceTableSize;
+        uint32_t RigidCountAt;         // the rigid run's vertex count (multiplayer u16 6, as Black Ops 7)
         int32_t SoundPreSkip;          // the Opus pre-skip (multiplayer 312, campaign 960: SABSupport::OpusPreSkip...)
         const uint8_t* ImageFormats;   // GfxImage format -> DXGI, ImageFormatCount entries
         uint32_t ImageFormatCount;
