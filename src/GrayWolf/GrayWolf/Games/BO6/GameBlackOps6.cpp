@@ -82,6 +82,22 @@ namespace
     // surface's vertices and its bone matching Black Ops 7's export of the same model; u16 2 is 0, which
     // left every rigid vertex on bone 0). The campaign's 12-byte runs keep u16 2 (not checked).
 
+    // GRAYWOLF_BO6_LAYER_COLORS=1: export each surface's Offsets[7] layer selectors as its vertex colours
+    bool LayerColors()
+    {
+        static const bool On = GetEnvironmentVariableA("GRAYWOLF_BO6_LAYER_COLORS", nullptr, 0) != 0;
+        return On;
+    }
+
+    int AlternateUvOffset()
+    {
+        static const int N = [] {
+            char Value[8] = {};
+            return GetEnvironmentVariableA("GRAYWOLF_BO6_UV_OFFSET", Value, sizeof(Value)) ? std::atoi(Value) : 0;
+        }();
+        return N;
+    }
+
     // a served pointer: a reference the zone does not hold keeps its raw hash (bit 63 set)
     bool Valid(uint64_t Address)
     {
@@ -232,6 +248,13 @@ std::unique_ptr<XModel_t> GameBlackOps6::ReadXModel(const CoDModel_t* Model)
             Sub.PackedIndexTablePtr = Info.Offsets[4];
             Sub.PackedIndexBufferPtr = Info.Offsets[5];
             Sub.VertexColorPtr = Info.Offsets[6];
+            // Offsets[7]: a layered material's per-vertex layer selector, 4 bytes per vertex (Vulture Aid's
+            // cabinet: 0xff000000 layer 0, 0xff0000ff layer 1, 0xff00ff00 layer 2). Opt-in, it replaces the
+            // vertex colours so the export carries it: GRAYWOLF_BO6_LAYER_COLORS=1.
+            if (LayerColors()) Sub.VertexColorPtr = Info.Offsets[7];
+            // GRAYWOLF_BO6_UV_OFFSET=<n>: read the UVs from Offsets[n] (another UV set) when the surface has one
+            if (const int UvOffset = AlternateUvOffset(); UvOffset > 0 && UvOffset < 14 && Info.Offsets[UvOffset] != 0xFFFFFFFF)
+                Sub.VertexUVsPtr = Info.Offsets[UvOffset];
             Sub.WeightsPtr = Info.Offsets[11];
             if (Info.NewScale != -1.0f)
             {
@@ -273,7 +296,7 @@ void GameBlackOps6::LoadXModel(const std::unique_ptr<XModel_t>& Model, const XMo
     const MeshDecode::LodFormat Format{ { MeshDecode::PositionCodec::Packed21, MeshDecode::NormalCodec::QTangent, MeshDecode::UvCodec::Half2,
                                           MeshDecode::FaceCodec::PackedTableDelta, Current->FaceTableSize, MeshDecode::Edge::Zero },
                                         { Current->RigidRunSize, Current->RigidCountAt } };
-    MeshDecode::DecodeLod(Mesh.View(), ModelLOD, Format, SettingsManager::GetSetting("exportvtxcolor", "true") == "true", *ResultModel);
+    MeshDecode::DecodeLod(Mesh.View(), ModelLOD, Format, LayerColors() || SettingsManager::GetSetting("exportvtxcolor", "true") == "true", *ResultModel);
 }
 
 const XMaterial_t GameBlackOps6::ReadXMaterial(uint64_t MaterialPointer)
