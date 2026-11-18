@@ -544,6 +544,10 @@ std::vector<std::vector<uint8_t>> IwctxReaders::XAnimParts(uint64_t Anim, const 
             uint32_t Got = 0;
             auto Object = CoDAssets::GamePackageCache->ExtractPackageObject(Read<uint64_t>(E + 8), Got);
             if (Object != nullptr) Buf.assign(Object.get(), Object.get() + Got);
+            // GH_MAPDEBUG: each streamed part's key, so the archive that holds it can be found
+            if (FILE* Dbg = Maps::DebugFile())
+                std::fprintf(Dbg, "[xanim part] %llx part %u key %016llx size %u -> %u\n", (unsigned long long)Anim, K,
+                    (unsigned long long)Read<uint64_t>(E + 8), Read<uint32_t>(E + 0x10), Got);
         }
         if (Buf.empty() && K == 0) return {};
         Out.push_back(std::move(Buf));
@@ -554,6 +558,7 @@ std::vector<std::vector<uint8_t>> IwctxReaders::XAnimParts(uint64_t Anim, const 
 std::unique_ptr<XAnim_t> IwctxReaders::ReadXAnim(const CoDAnim_t* Animation, const XAnimLayout& L, std::string (*BoneName)(uint64_t))
 {
     const uint64_t At = Animation->AssetPointer;
+    if (FILE* Dbg = Maps::DebugFile()) std::fprintf(Dbg, "[xanim] %s at %llx\n", Animation->AssetName.c_str(), (unsigned long long)At);
     const auto Parts = XAnimParts(At, L);
     if (Parts.empty() || Parts[0].size() < 0xa0) return nullptr;
     auto Anim = std::make_unique<XAnim_t>();
