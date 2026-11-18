@@ -176,6 +176,23 @@ namespace
         }
     }
 
+    // GRAYWOLF_BO7_LAYER_COLORS=1: export each surface's Offsets[7] as its vertex colours
+    bool LayerColors()
+    {
+        static const bool On = GetEnvironmentVariableA("GRAYWOLF_BO7_LAYER_COLORS", nullptr, 0) != 0;
+        return On;
+    }
+
+    // GRAYWOLF_BO7_UV_OFFSET=<n>: read the UVs from Offsets[n] (another UV set) when the surface has that stream
+    int AlternateUvOffset()
+    {
+        static const int N = [] {
+            char Value[8] = {};
+            return GetEnvironmentVariableA("GRAYWOLF_BO7_UV_OFFSET", Value, sizeof(Value)) ? std::atoi(Value) : 0;
+        }();
+        return N;
+    }
+
     template <class T>
     T Read(uint64_t Address) { return CoDAssets::GameInstance->Read<T>(Address); }
 
@@ -253,6 +270,14 @@ std::unique_ptr<XModel_t> GameBlackOps7::ReadXModel(const CoDModel_t* Model)
             Sub.PackedIndexTablePtr = Info.Offsets[4];
             Sub.PackedIndexBufferPtr = Info.Offsets[5];
             Sub.VertexColorPtr = Info.Offsets[6];
+            // Offsets[7]: a layered material's per-vertex layer selector, 4 bytes per vertex (Wisp Tea's cabinet:
+            // 0xff000000 layer 0, 0xff0000ff layer 1, 0xff00ff00 layer 2, as Black Ops 6's Offsets[7]; no face
+            // mixes layers). Other surfaces carry other data there. Opt-in, it replaces the vertex colours:
+            // GRAYWOLF_BO7_LAYER_COLORS=1.
+            if (LayerColors() && Info.Offsets[7] != 0xFFFFFFFF) Sub.VertexColorPtr = Info.Offsets[7];
+            // GRAYWOLF_BO7_UV_OFFSET=<n>: another UV set, when the surface has one
+            if (const int UvOffset = AlternateUvOffset(); UvOffset > 0 && UvOffset < 16 && Info.Offsets[UvOffset] != 0xFFFFFFFF)
+                Sub.VertexUVsPtr = Info.Offsets[UvOffset];
             Sub.WeightsPtr = Info.Offsets[14];
             if (Info.NewScale != -1.0f)
             {
@@ -399,7 +424,7 @@ void GameBlackOps7::LoadXModel(const std::unique_ptr<XModel_t>& Model, const XMo
     // (the vertex count at 6)
     constexpr MeshDecode::LodFormat Format{ { MeshDecode::PositionCodec::Packed21, MeshDecode::NormalCodec::QTangent, MeshDecode::UvCodec::Half2,
                                               MeshDecode::FaceCodec::PackedTableDelta, 32, MeshDecode::Edge::Partial }, { 16, 6 } };
-    MeshDecode::DecodeLod(Mesh.View(), ModelLOD, Format, SettingsManager::GetSetting("exportvtxcolor", "true") == "true", *ResultModel);
+    MeshDecode::DecodeLod(Mesh.View(), ModelLOD, Format, LayerColors() || SettingsManager::GetSetting("exportvtxcolor", "true") == "true", *ResultModel);
 }
 
 // ---- xanim
