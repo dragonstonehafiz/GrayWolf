@@ -435,7 +435,9 @@ namespace
     // u8 0x40 (bit 0 looping), asset type u8 0x42 (6 additive); the part at 0x48 (0x28: bone list
     // u32 0 / u16 8, the part count u8 0xa, notetracks 0x18 / u8 0x14, the part list 0x20). The
     // sampler (0xabf8eb0) reads the part count at 0x52 and the list at 0x68: {data, .xsub key, size}
-    constexpr IwctxReaders::XAnimLayout AnimLayout{ 0x14, 0x26, 0x40, 0x42, 0x2c, 0x52, 0x68, true, 0x41, 0x48, 0x50, IwctxReaders::ScriptString };
+    // Delta: the root motion (IwctxReaders.h)
+    constexpr IwctxReaders::XAnimLayout AnimLayout{ 0x14, 0x26, 0x40, 0x42, 0x2c, 0x52, 0x68, true, 0x41, 0x48, 0x50, IwctxReaders::ScriptString,
+                                                    false, true };
 }
 
 std::unique_ptr<XAnim_t> GameBlackOps7::ReadXAnim(const CoDAnim_t* Animation)

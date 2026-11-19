@@ -84,6 +84,15 @@ namespace IwctxReaders
         // the list holds zone string slots (u32 each, Black Ops 6's campaign: Load_ScriptString
         // 0x26f58a0 maps a slot of the zone's list) instead of the 64-bit hashes
         bool NoteNameSlots = false;
+        // Black Ops 7 and Black Ops 6: the root motion (tag_origin), in the first part's sections: 25 the translation
+        // header {u16 key count - 1, u8 data size (1: bytes, else u16), padding to 8, min vector,
+        // size vector, 8 bytes, the key frames} and its keys (key * size + min), in 26 as bytes or in 27
+        // as u16; 28 the 3D rotation header {u16 key count - 1, padding to 16, the key frames} and 30
+        // its keys (four i16 / 32767); 29 the 2D rotation
+        // header {u16 key count - 1, padding to 16, the key frames} and 31 its keys (two i16, z and w,
+        // / 32767). A count of 0: one key at frame 0 (the min vector; the rotation's key after its 8
+        // bytes). Key frames are bytes under 0x100 frames, else u16
+        bool Delta = false;
     };
     // The parts' bytes (the first missing: none; a later one missing: empty, its keys left out as
     // the game plays an animation whose on-demand part is not streamed)

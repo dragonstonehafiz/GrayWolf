@@ -355,8 +355,11 @@ namespace
     // 0x51ff3d0), emulated, reads them as Black Ops 7's. Notetracks: count u8 0x42, names 0x50 (u16
     // count 0x58): multiplayer 64-bit script string hashes, the campaign zone string slots
     // (iterator cod24 0x2ecdd60, sp24 0x298b520)
-    constexpr IwctxReaders::XAnimLayout AnimLayout{ 0x14, 0x26, 0x2c, 0x43, 0x2e, 0x5a, 0x70, true, 0x42, 0x50, 0x58, IwctxReaders::ScriptString };
-    constexpr IwctxReaders::XAnimLayout CampaignAnimLayout{ 0x14, 0x26, 0x2c, 0x43, 0x2e, 0x5a, 0x70, true, 0x42, 0x50, 0x58, IwctxReaders::SlotScriptString, true };
+    // Delta: the root motion, in the first part's sections as Black Ops 7's (IwctxReaders.h)
+    constexpr IwctxReaders::XAnimLayout AnimLayout{ 0x14, 0x26, 0x2c, 0x43, 0x2e, 0x5a, 0x70, true, 0x42, 0x50, 0x58, IwctxReaders::ScriptString,
+                                                    false, true };
+    constexpr IwctxReaders::XAnimLayout CampaignAnimLayout{ 0x14, 0x26, 0x2c, 0x43, 0x2e, 0x5a, 0x70, true, 0x42, 0x50, 0x58, IwctxReaders::SlotScriptString,
+                                                            true, true };
     const IwctxReaders::XAnimLayout& AnimLayoutOf(const GameBlackOps6::Layout* L) { return L == &GameBlackOps6::Campaign ? CampaignAnimLayout : AnimLayout; }
 }
 

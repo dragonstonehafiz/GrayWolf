@@ -746,6 +746,83 @@ void IwctxReaders::LoadXAnim(const std::unique_ptr<XAnim_t>& Anim, std::unique_p
         const uint16_t Index = (uint16_t)Get(B0, Ps, (int16_t)0);
         if (Index < Names.size()) Result->AddTranslationKey(Names[Index], 0, V[0], V[1], V[2]);
     }
+    // the root motion (XAnimLayout::Delta): tag_origin's translations (sections 25; 26 or 27), 3D
+    // rotations (28, 30) and 2D rotations (29, 31), in the first part
+    if (L.Delta)
+    {
+        const auto KeyFrame = [&](size_t& P) { return ByteFrames ? (uint32_t)Get(B0, P, (uint8_t)0) : (uint32_t)Get(B0, P, (uint16_t)0); };
+        if (const int32_t Head = Sec(25); Head >= 0)
+        {
+            size_t P = (size_t)Head;
+            const uint32_t Count = Get(B0, P, (uint16_t)0);
+            const uint8_t Size = Get(B0, P, (uint8_t)0);
+            P = (size_t)Head + 8;
+            float Min[3], Scale[3];
+            for (float& X : Min) X = Get(B0, P, 0.0f);
+            for (float& X : Scale) X = Get(B0, P, 0.0f);
+            if (Count == 0)
+                Result->AddTranslationKey("tag_origin", 0, Min[0], Min[1], Min[2]);
+            else if (const int32_t Keys = Sec(Size == 1 ? 26 : 27); Keys >= 0)
+            {
+                P += 8;
+                size_t D = (size_t)Keys;
+                for (uint32_t K = 0; K <= Count; K++)
+                {
+                    const uint32_t Frame = KeyFrame(P);
+                    float V[3];
+                    for (int X = 0; X < 3; X++)
+                        V[X] = Scale[X] * (Size == 1 ? (float)Get(B0, D, (uint8_t)0) : (float)Get(B0, D, (uint16_t)0)) + Min[X];
+                    Result->AddTranslationKey("tag_origin", Frame, V[0], V[1], V[2]);
+                }
+            }
+        }
+        if (const int32_t Head = Sec(29); Head >= 0)
+        {
+            size_t P = (size_t)Head;
+            const uint32_t Count = Get(B0, P, (uint16_t)0);
+            if (Count == 0)
+            {
+                P = (size_t)Head + 8;
+                const float Z = Get(B0, P, (int16_t)0) * Q, Wv = Get(B0, P, (int16_t)0) * Q;
+                Result->AddRotationKey("tag_origin", 0, 0, 0, Z, Wv);
+            }
+            else if (const int32_t Keys = Sec(31); Keys >= 0)
+            {
+                P = (size_t)Head + 16;
+                size_t D = (size_t)Keys;
+                for (uint32_t K = 0; K <= Count; K++)
+                {
+                    const uint32_t Frame = KeyFrame(P);
+                    const float Z = Get(B0, D, (int16_t)0) * Q, Wv = Get(B0, D, (int16_t)0) * Q;
+                    Result->AddRotationKey("tag_origin", Frame, 0, 0, Z, Wv);
+                }
+            }
+        }
+        if (const int32_t Head = Sec(28); Head >= 0)
+        {
+            size_t P = (size_t)Head;
+            const uint32_t Count = Get(B0, P, (uint16_t)0);
+            if (Count == 0)
+            {
+                P = (size_t)Head + 8;
+                float V[4];
+                for (float& X : V) X = Get(B0, P, (int16_t)0) * Q;
+                Result->AddRotationKey("tag_origin", 0, V[0], V[1], V[2], V[3]);
+            }
+            else if (const int32_t Keys = Sec(30); Keys >= 0)
+            {
+                P = (size_t)Head + 16;
+                size_t D = (size_t)Keys;
+                for (uint32_t K = 0; K <= Count; K++)
+                {
+                    const uint32_t Frame = KeyFrame(P);
+                    float V[4];
+                    for (float& X : V) X = Get(B0, D, (int16_t)0) * Q;
+                    Result->AddRotationKey("tag_origin", Frame, V[0], V[1], V[2], V[3]);
+                }
+            }
+        }
+    }
     // a bone's keys come part after part: in frame order, as the game looks them up
     if (L.GameRules)
     {
