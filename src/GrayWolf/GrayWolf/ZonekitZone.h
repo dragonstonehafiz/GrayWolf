@@ -266,6 +266,8 @@ protected:
     }
     // The map kind's exporter, for a game whose ReadMap reads its level: Exports(Kind::Map, ...)
     void ExportMap(const DiskGame::Context& C, DiskGame::Totals& T);
+    // The maplights kind's exporter: ReadMap's lights as <zone>.json, nothing else of the level
+    void ExportMapLights(const DiskGame::Context& C, DiskGame::Totals& T);
     // For ReadMap: the static model placements of a GfxWorldDpvsStatic array, each record the
     // origin (0), the axis rows (12) and the scale (48) from Placement (0, Black Ops II 4), its
     // model pointer at ModelField (Ghosts 0xb0 records / 0x38, BO3 0x98 / 0x58); named

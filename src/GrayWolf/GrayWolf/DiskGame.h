@@ -34,7 +34,7 @@ namespace DiskGame
 {
     // The asset kinds, one row each in Kinds below. A new kind is a row there (and here) plus its
     // exporter in the readers that support it: --type, the report and the GUI read the table.
-    enum class Kind { Model, Anim, Image, Sound, Rawfile, Data, Localize, Map, Script, Gdt, Fx, MaterialLinks, SoundLinks, AssetRefs, Techsets, ScriptBundles, Weapons, WeaponStats, MapInfo, Scriptables, MapEnts, AiTypes, Material };
+    enum class Kind { Model, Anim, Image, Sound, Rawfile, Data, Localize, Map, Script, Gdt, Fx, MaterialLinks, SoundLinks, AssetRefs, Techsets, ScriptBundles, Weapons, WeaponStats, MapInfo, Scriptables, MapEnts, AiTypes, Material, MapLights };
 
     struct KindInfo
     {
@@ -103,6 +103,9 @@ namespace DiskGame
         // effect draws with, pulled from the zone that defines it (ZonekitZone::ExportMaterials,
         // FxPreview reads them); by name only
         { Kind::Material, "material", "materials", "Materials (JSON + images)", false, true },
+        // a map zone's primary lights (the sun, spots, omnis) as JSON, what the map kind's ReadMap reads
+        // of them, without the level's geometry and textures (ZonekitZone::ExportMapLights); by name only
+        { Kind::MapLights, "maplights", "maplights", "Map lights (JSON)", false, true },
     };
     constexpr bool KindsInOrder()
     {

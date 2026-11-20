@@ -80,6 +80,7 @@ namespace
                 });
             Exports(Kind::Image, [this](const Context& C, Totals& T) { ExportImages(C, T); });
             Exports(Kind::Map, [this](const Context& C, Totals& T) { ExportMap(C, T); });
+            Exports(Kind::MapLights, [this](const Context& C, Totals& T) { ExportMapLights(C, T); });
             Exports(Kind::Sound, [this](const Context& C, Totals& T) { ExportSounds(C, T); });
             // gscobj (0x18, 0x283db80): hash 0, size u32 8, the GSCOBJ at 0x10; decompiled by acts
             Exports(Kind::Script, [this](const Context& C, Totals& T) {
@@ -1044,6 +1045,35 @@ namespace
                     if (Kind == 2) Out.CosHalfFovOuter = At<float>(Img, Rec + 116);
                     Scene.Lights.push_back(Out);
                     Counter(std::format("map_lights_type{}", Kind))++;
+                }
+            }
+        // ---- the Zombies maps' lights: their GfxWorld array is empty and com_map holds them, as Black Ops
+        // 7's (count u32 0x6c, array 0x70), in the multiplayer's 0xf0-byte records: colour 52 (its luminance 1), direction 64
+        // (toward the light: a sun's points up), origin 88, radius 100; the type a byte at 0xdb (1 sun,
+        // 2 spot, 3 omni; record 0 empty), cosHalfFovOuter 0x80 (cosines of round angles: 45, 50, 60
+        // degrees). Read from zm_t10_garnet's 209 records.
+        if (!Campaign && Scene.Lights.empty())
+            if (const int64_t Com = Root("com_map"); Com >= 0)
+            {
+                const uint32_t Count = At<uint32_t>(Img, Com + 0x6c);
+                const int64_t Lights = Off(PointerAt(Com + 0x70));
+                for (uint32_t K = 0; Lights >= 0 && K < Count && Lights + (int64_t)(K + 1) * 0xf0 <= Size; K++)
+                {
+                    const int64_t Rec = Lights + (int64_t)K * 0xf0;
+                    const uint8_t Type = Img[(size_t)(Rec + 0xdb)];
+                    if (Type < 1 || Type > 3) continue;
+                    Maps::Light Out;
+                    Out.Kind = Type == 1 ? Maps::Light::Type::Sun : Type == 2 ? Maps::Light::Type::Spot : Maps::Light::Type::Point;
+                    for (int J = 0; J < 3; J++)
+                    {
+                        Out.Color[J] = At<float>(Img, Rec + 52 + J * 4);
+                        Out.Dir[J] = At<float>(Img, Rec + 64 + J * 4);
+                        Out.Origin[J] = At<float>(Img, Rec + 88 + J * 4);
+                    }
+                    Out.Radius = At<float>(Img, Rec + 100);
+                    Out.CosHalfFovOuter = At<float>(Img, Rec + 0x80);
+                    Scene.Lights.push_back(Out);
+                    Counter(std::format("map_lights_type{}", Type))++;
                 }
             }
         return true;

@@ -15,6 +15,8 @@
 #include "MaterialDescription.h"
 #include "Gdt.h"
 
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -1059,6 +1061,47 @@ bool ZonekitZone::AddCollision(Maps::MapScene& Scene, const std::vector<const ch
     const bool Read = Maps::ReadCollision(Scene.Collision, Src, Clip, L, Unread);
     for (const auto& [Key, N] : Unread) Counter("map_" + Key) += N;
     return Read;
+}
+
+// The zone's primary lights as <out>/<game>/maplights/<zone>.json: ReadMap's Scene.Lights in the
+// game's order (the first sun is the map's sun), the values as the game stores them: colour (linear,
+// Black Ops 6 and 7: its luminance 1), direction (toward the light), origin and radius (spots and omnis), cosHalfFovOuter (spots)
+void ZonekitZone::ExportMapLights(const DiskGame::Context& C, DiskGame::Totals& T)
+{
+    using DiskGame::Kind;
+    auto& Kt = T.Kinds[Kind::MapLights];
+    Maps::MapScene Scene;
+    std::map<std::string, uint64_t> Models;
+    if (!ReadMap(Scene, Models) || !C.Wants(Kind::MapLights, ZoneName)) return;
+    Kt.Seen++;
+    nlohmann::ordered_json Lights = nlohmann::ordered_json::array();
+    for (const auto& L : Scene.Lights)
+    {
+        nlohmann::ordered_json J;
+        J["type"] = L.Kind == Maps::Light::Type::Sun ? "sun" : L.Kind == Maps::Light::Type::Spot ? "spot" : "omni";
+        J["color"] = { L.Color[0], L.Color[1], L.Color[2] };
+        J["direction"] = { L.Dir[0], L.Dir[1], L.Dir[2] };
+        if (L.Kind != Maps::Light::Type::Sun)
+        {
+            J["origin"] = { L.Origin[0], L.Origin[1], L.Origin[2] };
+            J["radius"] = L.Radius;
+        }
+        if (L.Kind == Maps::Light::Type::Spot) J["cos_half_fov_outer"] = L.CosHalfFovOuter;
+        Lights.push_back(J);
+    }
+    nlohmann::ordered_json Out;
+    Out["zone"] = ZoneName;
+    Out["map"] = Scene.Name;
+    Out["lights"] = Lights;
+    const std::string Text = Out.dump(1);
+    const auto File = std::filesystem::path(C.KindDir(Kind::MapLights)) / (ExportNaming::SafeFileName(ZoneName) + ".json");
+    if (!ExportWriters::WriteBytes(File, (const uint8_t*)Text.data(), Text.size()))
+    {
+        T.Fail(ZoneName, Kind::MapLights, ZoneName, "write failed");
+        return;
+    }
+    Kt.Written++;
+    Counter("map_lights") += Scene.Lights.size();
 }
 
 // The level as one .glb (MapGlbWriter): what the game's ReadMap reads, the placed models through

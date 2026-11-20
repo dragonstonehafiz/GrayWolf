@@ -72,6 +72,7 @@ namespace
             using namespace DiskGame;
             Exports(Kind::Image, [this](const Context& C, Totals& T) { ExportImages(C, T); });
             Exports(Kind::Map, [this](const Context& C, Totals& T) { ExportMap(C, T); });
+            Exports(Kind::MapLights, [this](const Context& C, Totals& T) { ExportMapLights(C, T); });
             Exports(Kind::Sound, [this](const Context& C, Totals& T) { ExportSounds(C, T); });
             // gscobj (0x18, 0x3861c50): {XHash name, u32 len 8, buffer 0x10}, a GSCOBJ acts reads
             Exports(Kind::Script, [this](const Context& C, Totals& T) {
@@ -1387,6 +1388,20 @@ namespace
         EntityStrings(Ents);
         Scene.MapEnts += IwctxReaders::EntityText(Ents);
         Counter("map_ents") += Ents.size();
+
+        // ---- the primary lights: com_map's, as Modern Warfare III's (count u32 0x6c, array 0x70), in
+        // 0x118-byte records: type byte 0xf7 (1 sun, 2 spot, 3 omni; record 0 empty), colour 3 floats 0x40
+        // (linear, its Rec. 709 luminance 1: the hue only), direction 0x4c (toward the light: a sun's points up), origin 0x64,
+        // radius 0x70, cosHalfFovOuter 0x8c (cosines of round angles, 45 and 75 degrees). Read from
+        // zm_sat_locust's 22 records; the float at 0x38 (sun 0.0318, spots 2 to 824) is not established.
+        {
+            LightLayout L;
+            L.Count = 0x6c, L.Array = 0x70, L.Size = 0x118, L.TypeAt = 0xf7;
+            L.Color = 0x40, L.Dir = 0x4c, L.Origin = 0x64, L.Radius = 0x70, L.CosHalfFov = 0x8c;
+            const size_t Before = Scene.Lights.size();
+            AddPrimaryLights(Scene, L);
+            Counter("map_lights") += Scene.Lights.size() - Before;
+        }
         return true;
     }
 
