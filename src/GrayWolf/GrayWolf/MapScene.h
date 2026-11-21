@@ -154,6 +154,17 @@ namespace Maps
         std::map<std::string, Mesh> Models;         // what the instances place, by name
         std::vector<Instance> StaticInstances, DynamicInstances, SplinedInstances;
         std::vector<Light> Lights;
+        // The map's lighting states (Black Ops 6 and 7 lightstate assets): a sun and the sky that lights
+        // the map with it. Colour is the sun's (largest channel 1), Intensity its light in the engine's
+        // units (the sky material's texture times its constant 0x38 is in the same units), Height and
+        // Azimuth in degrees (the azimuth in the world's x/y plane), Sky the sky material's name.
+        struct LightState
+        {
+            float Color[3] = { 1, 1, 1 };
+            float Intensity = 0, Height = 0, Azimuth = 0;
+            std::string Sky;
+        };
+        std::vector<LightState> LightStates;
         std::map<std::string, Material> Materials;  // by name
         std::map<std::string, Image> Images;        // by name
         float AmbientColor[3] = { 0, 0, 0 };

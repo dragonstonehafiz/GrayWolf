@@ -1063,8 +1063,31 @@ bool ZonekitZone::AddCollision(Maps::MapScene& Scene, const std::vector<const ch
     return Read;
 }
 
+// A lightstate (Black Ops 6 0xe0 bytes, Black Ops 7 0xe8): the sun's colour 3 floats 0x18 (largest
+// channel 1) and intensity 0x24 (the engine's light units: the sun record of com_map holds it over pi
+// at 0x38), its pitch 0x2c (minus its height) and azimuth 0x30 in degrees, and the sky material 0xb0,
+// whose texture times its constant 0x38 the sky shader draws in the same units. Read from the 12
+// Zombies maps: their first com_map sun has the height of one of their lightstates.
+void ZonekitZone::AddLightStates(Maps::MapScene& Scene)
+{
+    const auto& W = Walk();
+    const auto& Img = Image();
+    for (const auto& I : W.Instances)
+    {
+        if (I.Parent >= 0 || W.OwnerNames[I.Owner] != "lightstate") continue;
+        Maps::MapScene::LightState S;
+        for (int J = 0; J < 3; J++) S.Color[J] = At<float>(Img, I.Pos + 0x18 + J * 4);
+        S.Intensity = At<float>(Img, I.Pos + 0x24);
+        S.Height = -At<float>(Img, I.Pos + 0x2c);
+        S.Azimuth = At<float>(Img, I.Pos + 0x30);
+        if (const int64_t Sky = Off(PointerAt(I.Pos + 0xb0)); Sky >= 0) S.Sky = AssetName(DiskGame::Kind::Material, Sky);
+        Scene.LightStates.push_back(S);
+    }
+    Counter("map_lightstates") += Scene.LightStates.size();
+}
+
 // The zone's primary lights as <out>/<game>/maplights/<zone>.json: ReadMap's Scene.Lights in the
-// game's order (the first sun is the map's sun), the values as the game stores them: colour (linear,
+// game's order (the first sun is the map's sun), and its lighting states (Scene.LightStates), the values as the game stores them: colour (linear,
 // Black Ops 6 and 7: its luminance 1), direction (toward the light), origin and radius (spots and omnis), cosHalfFovOuter (spots)
 void ZonekitZone::ExportMapLights(const DiskGame::Context& C, DiskGame::Totals& T)
 {
@@ -1089,10 +1112,22 @@ void ZonekitZone::ExportMapLights(const DiskGame::Context& C, DiskGame::Totals& 
         if (L.Kind == Maps::Light::Type::Spot) J["cos_half_fov_outer"] = L.CosHalfFovOuter;
         Lights.push_back(J);
     }
+    nlohmann::ordered_json States = nlohmann::ordered_json::array();
+    for (const auto& S : Scene.LightStates)
+    {
+        nlohmann::ordered_json J;
+        J["sun_color"] = { S.Color[0], S.Color[1], S.Color[2] };
+        J["sun_intensity"] = S.Intensity;
+        J["sun_height"] = S.Height;
+        J["sun_azimuth"] = S.Azimuth;
+        J["sky"] = S.Sky;
+        States.push_back(J);
+    }
     nlohmann::ordered_json Out;
     Out["zone"] = ZoneName;
     Out["map"] = Scene.Name;
     Out["lights"] = Lights;
+    Out["states"] = States;
     const std::string Text = Out.dump(1);
     const auto File = std::filesystem::path(C.KindDir(Kind::MapLights)) / (ExportNaming::SafeFileName(ZoneName) + ".json");
     if (!ExportWriters::WriteBytes(File, (const uint8_t*)Text.data(), Text.size()))

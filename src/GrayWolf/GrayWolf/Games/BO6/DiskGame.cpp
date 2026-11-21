@@ -1076,6 +1076,7 @@ namespace
                     Counter(std::format("map_lights_type{}", Type))++;
                 }
             }
+        if (!Campaign) AddLightStates(Scene);
         return true;
     }
 

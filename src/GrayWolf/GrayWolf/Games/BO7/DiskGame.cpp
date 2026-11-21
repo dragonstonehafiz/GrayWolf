@@ -1402,6 +1402,7 @@ namespace
             AddPrimaryLights(Scene, L);
             Counter("map_lights") += Scene.Lights.size() - Before;
         }
+        AddLightStates(Scene);
         return true;
     }
 
